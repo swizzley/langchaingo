@@ -316,6 +316,7 @@ require (
 
 require (
 	github.com/milvus-io/milvus/client/v2 v2.6.0
+	github.com/sijms/go-ora/v2 v2.9.0
 	github.com/testcontainers/testcontainers-go/modules/mariadb v0.38.0
 )
 
