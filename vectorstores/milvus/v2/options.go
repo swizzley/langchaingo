@@ -10,7 +10,7 @@ import (
 	"github.com/milvus-io/milvus/client/v2/entity"
 	"github.com/milvus-io/milvus/client/v2/index"
 	"github.com/milvus-io/milvus/client/v2/milvusclient"
-	"github.com/tmc/langchaingo/embeddings"
+	"github.com/swizzley/langchaingo/embeddings"
 )
 
 const (

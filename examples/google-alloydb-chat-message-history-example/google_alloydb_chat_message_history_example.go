@@ -6,9 +6,9 @@ import (
 	"log"
 	"os"
 
-	"github.com/tmc/langchaingo/llms"
-	"github.com/tmc/langchaingo/memory/alloydb"
-	"github.com/tmc/langchaingo/util/alloydbutil"
+	"github.com/swizzley/langchaingo/llms"
+	"github.com/swizzley/langchaingo/memory/alloydb"
+	"github.com/swizzley/langchaingo/util/alloydbutil"
 )
 
 // getEnvVariables loads the necessary environment variables for the AlloyDB connection

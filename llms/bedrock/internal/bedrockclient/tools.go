@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 
-	"github.com/tmc/langchaingo/llms"
+	"github.com/swizzley/langchaingo/llms"
 )
 
 // BedrockTool represents a tool definition for Bedrock API

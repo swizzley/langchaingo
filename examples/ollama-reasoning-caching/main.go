@@ -8,8 +8,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/tmc/langchaingo/llms"
-	"github.com/tmc/langchaingo/llms/ollama"
+	"github.com/swizzley/langchaingo/llms"
+	"github.com/swizzley/langchaingo/llms/ollama"
 )
 
 func main() {

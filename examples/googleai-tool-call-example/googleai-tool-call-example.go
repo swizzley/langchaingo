@@ -8,8 +8,8 @@ import (
 	"os"
 	"strings"
 
-	"github.com/tmc/langchaingo/llms"
-	"github.com/tmc/langchaingo/llms/googleai"
+	"github.com/swizzley/langchaingo/llms"
+	"github.com/swizzley/langchaingo/llms/googleai"
 )
 
 func main() {

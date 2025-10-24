@@ -4,7 +4,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/tmc/langchaingo/llms"
+	"github.com/swizzley/langchaingo/llms"
 )
 
 // mockPromptValue implements the PromptValue interface for testing

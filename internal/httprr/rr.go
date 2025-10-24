@@ -35,7 +35,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/tmc/langchaingo/httputil"
+	"github.com/swizzley/langchaingo/httputil"
 )
 
 var (

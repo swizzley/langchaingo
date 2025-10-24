@@ -7,8 +7,8 @@ import (
 	"time"
 
 	sdk "github.com/gage-technologies/mistral-go"
-	"github.com/tmc/langchaingo/llms"
-	"github.com/tmc/langchaingo/schema"
+	"github.com/swizzley/langchaingo/llms"
+	"github.com/swizzley/langchaingo/schema"
 )
 
 func TestNew(t *testing.T) {

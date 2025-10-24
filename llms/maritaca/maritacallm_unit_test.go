@@ -8,10 +8,10 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"github.com/tmc/langchaingo/callbacks"
-	"github.com/tmc/langchaingo/llms"
-	"github.com/tmc/langchaingo/llms/maritaca/internal/maritacaclient"
-	"github.com/tmc/langchaingo/schema"
+	"github.com/swizzley/langchaingo/callbacks"
+	"github.com/swizzley/langchaingo/llms"
+	"github.com/swizzley/langchaingo/llms/maritaca/internal/maritacaclient"
+	"github.com/swizzley/langchaingo/schema"
 )
 
 func TestNew(t *testing.T) {

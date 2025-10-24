@@ -8,8 +8,8 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"github.com/tmc/langchaingo/internal/httprr"
-	"github.com/tmc/langchaingo/schema"
+	"github.com/swizzley/langchaingo/internal/httprr"
+	"github.com/swizzley/langchaingo/schema"
 )
 
 // MockEmbedder is a mock embedder for testing.

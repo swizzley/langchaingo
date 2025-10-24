@@ -13,9 +13,9 @@ import (
 	_ "github.com/go-sql-driver/mysql"
 
 	"github.com/google/uuid"
-	"github.com/tmc/langchaingo/embeddings"
-	"github.com/tmc/langchaingo/schema"
-	"github.com/tmc/langchaingo/vectorstores"
+	"github.com/swizzley/langchaingo/embeddings"
+	"github.com/swizzley/langchaingo/schema"
+	"github.com/swizzley/langchaingo/vectorstores"
 )
 
 var (

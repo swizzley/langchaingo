@@ -6,7 +6,7 @@ import (
 	"time"
 
 	"github.com/google/generative-ai-go/genai"
-	"github.com/tmc/langchaingo/llms"
+	"github.com/swizzley/langchaingo/llms"
 )
 
 // CachingHelper provides utilities for working with Google AI's cached content feature.

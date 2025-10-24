@@ -4,8 +4,6 @@ go 1.24.4
 
 toolchain go1.24.6
 
-replace github.com/tmc/langchaingo => github.com/swizzley/langchaingo v0.0.1
-
 // Note: Thanks to Go's module graph pruning (https://go.dev/ref/mod#graph-pruning),
 // importing langchaingo does NOT pull in all dependencies listed below. You only
 // get dependencies for the specific packages you import. For example:

@@ -6,7 +6,7 @@ import (
 	"fmt"
 
 	_ "github.com/sijms/go-ora/v2" // oracle driver
-	"github.com/tmc/langchaingo/tools/sqldatabase"
+	"github.com/swizzley/langchaingo/tools/sqldatabase"
 )
 
 const EngineName = "oracle"

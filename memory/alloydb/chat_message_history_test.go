@@ -6,9 +6,9 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/tmc/langchaingo/llms"
-	"github.com/tmc/langchaingo/memory/alloydb"
-	"github.com/tmc/langchaingo/util/alloydbutil"
+	"github.com/swizzley/langchaingo/llms"
+	"github.com/swizzley/langchaingo/memory/alloydb"
+	"github.com/swizzley/langchaingo/util/alloydbutil"
 )
 
 type chatMsg struct{}

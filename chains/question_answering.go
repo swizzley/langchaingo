@@ -1,8 +1,8 @@
 package chains
 
 import (
-	"github.com/tmc/langchaingo/llms"
-	"github.com/tmc/langchaingo/prompts"
+	"github.com/swizzley/langchaingo/llms"
+	"github.com/swizzley/langchaingo/prompts"
 )
 
 //nolint:lll

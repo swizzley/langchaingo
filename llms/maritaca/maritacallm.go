@@ -4,10 +4,10 @@ import (
 	"context"
 	"errors"
 
-	"github.com/tmc/langchaingo/callbacks"
-	"github.com/tmc/langchaingo/httputil"
-	"github.com/tmc/langchaingo/llms"
-	"github.com/tmc/langchaingo/llms/maritaca/internal/maritacaclient"
+	"github.com/swizzley/langchaingo/callbacks"
+	"github.com/swizzley/langchaingo/httputil"
+	"github.com/swizzley/langchaingo/llms"
+	"github.com/swizzley/langchaingo/llms/maritaca/internal/maritacaclient"
 )
 
 var (

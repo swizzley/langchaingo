@@ -5,8 +5,8 @@ import (
 	"slices"
 	"strings"
 
-	"github.com/tmc/langchaingo/llms"
-	"github.com/tmc/langchaingo/schema"
+	"github.com/swizzley/langchaingo/llms"
+	"github.com/swizzley/langchaingo/schema"
 )
 
 // BooleanParser is an output parser used to parse the output of an LLM as a boolean.

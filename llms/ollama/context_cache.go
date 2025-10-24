@@ -6,7 +6,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/tmc/langchaingo/llms"
+	"github.com/swizzley/langchaingo/llms"
 )
 
 // ContextCache provides a simple in-memory cache for conversation contexts.
