@@ -113,6 +113,7 @@ func (sd *SQLDatabase) TableInfo(ctx context.Context, tables []string) (string, 
 		// Get sample rows
 		if sd.SampleRowsNumber > 0 {
 			sampleRows, err := sd.sampleRows(ctx, tb, sd.SampleRowsNumber)
+
 			if err != nil {
 				return "", err
 			}
@@ -143,7 +144,12 @@ func (sd *SQLDatabase) Close() error {
 }
 
 func (sd *SQLDatabase) sampleRows(ctx context.Context, table string, rows int) (string, error) {
-	query := fmt.Sprintf("SELECT * FROM %s LIMIT %d", table, rows)
+	var query string
+	if sd.Dialect() == "oracle" {
+		query = fmt.Sprintf("SELECT * FROM %s FETCH FIRST %d ROWS ONLY", table, rows)
+	} else {
+		query = fmt.Sprintf("SELECT * FROM %s LIMIT %d", table, rows)
+	}
 	result, err := sd.Query(ctx, query)
 	if err != nil {
 		return "", err

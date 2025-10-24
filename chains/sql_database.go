@@ -119,6 +119,10 @@ func (s SQLDatabaseChain) Call(ctx context.Context, inputs map[string]any, optio
 		return nil, fmt.Errorf("no sql query generated")
 	}
 
+	if s.Database.Dialect() == "oracle" {
+		sqlQuery = strings.TrimSuffix(sqlQuery, ";")
+	}
+
 	// Execute sql query
 	queryResult, err := s.Database.Query(ctx, sqlQuery)
 	if err != nil {

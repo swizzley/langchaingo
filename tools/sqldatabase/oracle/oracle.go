@@ -4,7 +4,6 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
-
 	_ "github.com/sijms/go-ora/v2" // oracle driver
 	"github.com/swizzley/langchaingo/tools/sqldatabase"
 )
@@ -30,7 +29,7 @@ func NewOracle(dsn string) (sqldatabase.Engine, error) { //nolint:ireturn
 	if err != nil {
 		return nil, err
 	}
-	db.SetMaxOpenConns(32) //nolint:gomnd
+	db.SetMaxOpenConns(1) //nolint:gomnd
 
 	return &Oracle{
 		db: db,
@@ -94,11 +93,11 @@ func (m Oracle) TableInfo(ctx context.Context, table string) (string, error) {
 	if len(result) == 0 {
 		return "", sqldatabase.ErrTableNotFound
 	}
-	if len(result[0]) < 2 { //nolint:gomnd
+	if len(result[0]) < 1 { //nolint:gomnd
 		return "", sqldatabase.ErrInvalidResult
 	}
 
-	return result[0][1], nil //nolint:gomnd
+	return result[0][0], nil //nolint:gomnd
 }
 
 func (m Oracle) Close() error {
