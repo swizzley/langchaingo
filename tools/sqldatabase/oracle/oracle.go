@@ -19,12 +19,14 @@ var _ sqldatabase.Engine = Oracle{}
 
 // Oracle is a Oracle engine.
 type Oracle struct {
-	db *sql.DB
+	db     *sql.DB
+	schema string
 }
 
 // NewOracle creates a new Oracle engine.
 // The dsn is the data source name.(e.g.  oracle://user:pass@host:port/serviceName
-func NewOracle(dsn string) (sqldatabase.Engine, error) { //nolint:ireturn
+// The schema is for being able to switch user schemas from a single user
+func NewOracle(dsn string, schema string) (sqldatabase.Engine, error) { //nolint:ireturn
 	db, err := sql.Open(EngineName, dsn)
 	if err != nil {
 		return nil, err
@@ -32,7 +34,8 @@ func NewOracle(dsn string) (sqldatabase.Engine, error) { //nolint:ireturn
 	db.SetMaxOpenConns(1) //nolint:gomnd
 
 	return &Oracle{
-		db: db,
+		db:     db,
+		schema: schema,
 	}, nil
 }
 
@@ -74,7 +77,7 @@ func (m Oracle) Query(ctx context.Context, query string, args ...any) ([]string,
 }
 
 func (m Oracle) TableNames(ctx context.Context) ([]string, error) {
-	_, result, err := m.Query(ctx, "SELECT table_name FROM user_tables")
+	_, result, err := m.Query(ctx, fmt.Sprintf("SELECT table_name FROM ALL_TABLES WHERE OWNER = '%s'", m.schema))
 	if err != nil {
 		return nil, err
 	}
@@ -86,7 +89,7 @@ func (m Oracle) TableNames(ctx context.Context) ([]string, error) {
 }
 
 func (m Oracle) TableInfo(ctx context.Context, table string) (string, error) {
-	_, result, err := m.Query(ctx, fmt.Sprintf("SELECT DBMS_METADATA.GET_DDL('TABLE', '%s') FROM DUAL", table))
+	_, result, err := m.Query(ctx, fmt.Sprintf("SELECT DBMS_METADATA.GET_DDL('TABLE', '%s', '%s') FROM DUAL", table, m.schema))
 	if err != nil {
 		return "", err
 	}

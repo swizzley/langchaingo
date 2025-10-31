@@ -22,21 +22,24 @@ var _ sqldatabase.Engine = PostgreSQL{}
 
 // PostgreSQL represents the PostgreSQL engine.
 type PostgreSQL struct {
-	db *sql.DB
+	db     *sql.DB
+	schema string
 }
 
 // NewPostgreSQL creates a new PostgreSQL engine instance.
 // The dsn parameter is the data source name
 // (e.g. postgres://db_user:mysecretpassword@localhost:5438/test?sslmode=disable).
 // It returns a sqldatabase.Engine and an error, if any.
-func NewPostgreSQL(dsn string) (sqldatabase.Engine, error) { //nolint:ireturn
+// The schema is for compatability and should be left blank since it is unused
+func NewPostgreSQL(dsn string, schema string) (sqldatabase.Engine, error) { //nolint:ireturn
 	db, err := sql.Open(EngineName, dsn)
 	if err != nil {
 		return nil, err
 	}
 
 	return &PostgreSQL{
-		db: db,
+		db:     db,
+		schema: schema,
 	}, nil
 }
 

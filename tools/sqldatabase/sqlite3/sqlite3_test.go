@@ -34,7 +34,7 @@ func Test(t *testing.T) {
 	require.NoError(t, err)
 	tmpDB.Close()
 
-	db, err := sqldatabase.NewSQLDatabaseWithDSN("sqlite3", dsn, nil)
+	db, err := sqldatabase.NewSQLDatabaseWithDSN("sqlite3", dsn, "", nil)
 	require.NoError(t, err)
 	defer db.Close()
 

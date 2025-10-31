@@ -11,12 +11,12 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
-	"github.com/testcontainers/testcontainers-go"
-	"github.com/testcontainers/testcontainers-go/log"
-	"github.com/testcontainers/testcontainers-go/modules/mysql"
 	"github.com/swizzley/langchaingo/internal/testutil/testctr"
 	"github.com/swizzley/langchaingo/tools/sqldatabase"
 	_ "github.com/swizzley/langchaingo/tools/sqldatabase/mysql"
+	"github.com/testcontainers/testcontainers-go"
+	"github.com/testcontainers/testcontainers-go/log"
+	"github.com/testcontainers/testcontainers-go/modules/mysql"
 )
 
 func Test(t *testing.T) {
@@ -56,7 +56,7 @@ func Test(t *testing.T) {
 		require.NoError(t, err)
 	}
 
-	db, err := sqldatabase.NewSQLDatabaseWithDSN("mysql", mysqlURI, nil)
+	db, err := sqldatabase.NewSQLDatabaseWithDSN("mysql", mysqlURI, "", nil)
 	require.NoError(t, err)
 
 	tbs := db.TableNames()

@@ -19,12 +19,14 @@ var _ sqldatabase.Engine = SQLite3{}
 
 // SQLite3 is a SQLite3 engine.
 type SQLite3 struct {
-	db *sql.DB
+	db     *sql.DB
+	schema string
 }
 
 // NewSQLite3 creates a new SQLite3 engine.
 // The dsn is the data source name.(e.g. file:locked.sqlite?cache=shared).
-func NewSQLite3(dsn string) (sqldatabase.Engine, error) { //nolint:ireturn
+// The schema is for compatability and should be left blank since it is unused
+func NewSQLite3(dsn string, schema string) (sqldatabase.Engine, error) { //nolint:ireturn
 	db, err := sql.Open(EngineName, dsn)
 	if err != nil {
 		return nil, err
@@ -32,7 +34,8 @@ func NewSQLite3(dsn string) (sqldatabase.Engine, error) { //nolint:ireturn
 	db.SetMaxOpenConns(1)
 
 	return &SQLite3{
-		db: db,
+		db:     db,
+		schema: schema,
 	}, nil
 }
 

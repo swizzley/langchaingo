@@ -20,12 +20,14 @@ var _ sqldatabase.Engine = MySQL{}
 
 // MySQL is a MySQL engine.
 type MySQL struct {
-	db *sql.DB
+	db     *sql.DB
+	schema string
 }
 
 // NewMySQL creates a new MySQL engine.
 // The dsn is the data source name.(e.g. root:password@tcp(localhost:3306)/test).
-func NewMySQL(dsn string) (sqldatabase.Engine, error) { //nolint:ireturn
+// The schema is for compatability and should be left blank since it is unused
+func NewMySQL(dsn string, schema string) (sqldatabase.Engine, error) { //nolint:ireturn
 	db, err := sql.Open(EngineName, dsn)
 	if err != nil {
 		return nil, err
@@ -33,7 +35,8 @@ func NewMySQL(dsn string) (sqldatabase.Engine, error) { //nolint:ireturn
 	db.SetMaxOpenConns(32) //nolint:gomnd
 
 	return &MySQL{
-		db: db,
+		db:     db,
+		schema: schema,
 	}, nil
 }
 

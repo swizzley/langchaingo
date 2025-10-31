@@ -8,7 +8,7 @@ import (
 )
 
 // EngineFunc is the function that returns the database engine.
-type EngineFunc func(string) (Engine, error)
+type EngineFunc func(string, string) (Engine, error)
 
 //nolint:gochecknoglobals
 var engines = make(map[string]EngineFunc)
@@ -47,13 +47,15 @@ var (
 type SQLDatabase struct {
 	Engine           Engine // The database engine.
 	SampleRowsNumber int    // The number of sample rows to show. 0 means no sample rows.
+	SchemaName       string
 	allTables        []string
 }
 
 // NewSQLDatabase creates a new SQLDatabase.
-func NewSQLDatabase(engine Engine, ignoreTables map[string]struct{}) (*SQLDatabase, error) {
+func NewSQLDatabase(engine Engine, schema string, ignoreTables map[string]struct{}) (*SQLDatabase, error) {
 	sd := &SQLDatabase{
 		Engine:           engine,
+		SchemaName:       schema,
 		SampleRowsNumber: 3, //nolint:gomnd
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second) //nolint:gomnd
@@ -73,16 +75,16 @@ func NewSQLDatabase(engine Engine, ignoreTables map[string]struct{}) (*SQLDataba
 }
 
 // NewSQLDatabaseWithDSN creates a new SQLDatabase with the data source name.
-func NewSQLDatabaseWithDSN(dialect, dsn string, ignoreTables map[string]struct{}) (*SQLDatabase, error) {
+func NewSQLDatabaseWithDSN(dialect, dsn string, schema string, ignoreTables map[string]struct{}) (*SQLDatabase, error) {
 	engineFunc, ok := engines[dialect]
 	if !ok {
 		return nil, ErrUnknownDialect
 	}
-	engine, err := engineFunc(dsn)
+	engine, err := engineFunc(dsn, schema)
 	if err != nil {
 		return nil, err
 	}
-	return NewSQLDatabase(engine, ignoreTables)
+	return NewSQLDatabase(engine, schema, ignoreTables)
 }
 
 // Dialect returns the dialect(e.g. mysql, sqlite, postgre) of the database.
