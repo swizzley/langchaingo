@@ -102,6 +102,18 @@ func (sd *SQLDatabase) TableNames() []string {
 func (sd *SQLDatabase) TableInfo(ctx context.Context, tables []string) (string, error) {
 	if len(tables) == 0 {
 		tables = sd.allTables
+	}else {
+		var matchTables []string
+		for _, t := range tables {
+			for _, table := range sd.allTables {
+				if strings.Contains(table, t) {
+					matchTables = append(matchTables, table)
+				}
+			}
+		}
+		if len(matchTables) > 0 {
+			tables = matchTables
+		}
 	}
 	str := ""
 	for _, tb := range tables {
@@ -148,6 +160,9 @@ func (sd *SQLDatabase) Close() error {
 func (sd *SQLDatabase) sampleRows(ctx context.Context, table string, rows int) (string, error) {
 	var query string
 	if sd.Dialect() == "oracle" {
+		if strings.Contains(table, ":") {
+			table = strings.Split(table, ":")[1]
+		}
 		query = fmt.Sprintf("SELECT * FROM %s FETCH FIRST %d ROWS ONLY", table, rows)
 	} else {
 		query = fmt.Sprintf("SELECT * FROM %s LIMIT %d", table, rows)
