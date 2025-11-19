@@ -6,6 +6,7 @@ import (
 	"fmt"
 	_ "github.com/sijms/go-ora/v2" // oracle driver
 	"github.com/swizzley/langchaingo/tools/sqldatabase"
+	"strings"
 )
 
 const EngineName = "oracle"
@@ -77,10 +78,12 @@ func (m Oracle) Query(ctx context.Context, query string, args ...any) ([]string,
 }
 
 func (m Oracle) TableNames(ctx context.Context) ([]string, error) {
-	_, result, err := m.Query(ctx, fmt.Sprintf("SELECT table_name FROM ALL_TABLES WHERE OWNER = '%s'", m.schema))
+	//include type as value prefix
+	_, result, err := m.Query(ctx, fmt.Sprintf("select OBJECT_TYPE || ':' || OBJECT_NAME as TYPE_AND_NAME from ALL_OBJECTS where OBJECT_TYPE in ('TABLE', 'VIEW') and OWNER = '%s'", m.schema))
 	if err != nil {
 		return nil, err
 	}
+
 	ret := make([]string, 0, len(result))
 	for _, row := range result {
 		ret = append(ret, row[0])
@@ -89,7 +92,14 @@ func (m Oracle) TableNames(ctx context.Context) ([]string, error) {
 }
 
 func (m Oracle) TableInfo(ctx context.Context, table string) (string, error) {
-	_, result, err := m.Query(ctx, fmt.Sprintf("SELECT DBMS_METADATA.GET_DDL('TABLE', '%s', '%s') FROM DUAL", table, m.schema))
+	//accommodate views by splitting the value and passing the type as an argument
+	tableType := "TABLE"
+	tableName := table
+	if strings.Contains(tableName, ":") {
+		tableType = strings.Split(table, ":")[0]
+		tableName = strings.Split(table, ":")[1]
+	}
+	_, result, err := m.Query(ctx, fmt.Sprintf("SELECT DBMS_METADATA.GET_DDL('%s', '%s', '%s') FROM DUAL", tableType, tableName, m.schema))
 	if err != nil {
 		return "", err
 	}
