@@ -163,7 +163,7 @@ func (sd *SQLDatabase) sampleRows(ctx context.Context, table string, rows int) (
 		if strings.Contains(table, ":") {
 			table = strings.Split(table, ":")[1]
 		}
-		query = fmt.Sprintf("SELECT * FROM %s FETCH FIRST %d ROWS ONLY", table, rows)
+		query = fmt.Sprintf("SELECT * FROM %s FETCH FIRST %d ROWS ONLY", fmt.Sprintf("%s.%s", sd.SchemaName, table), rows)
 	} else {
 		query = fmt.Sprintf("SELECT * FROM %s LIMIT %d", table, rows)
 	}
