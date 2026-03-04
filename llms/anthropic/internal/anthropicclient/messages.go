@@ -33,6 +33,13 @@ type ChatMessage struct {
 	Content interface{} `json:"content"`
 }
 
+// ToolChoice controls which tool(s) the model may call.
+// Type: "auto" (default), "any" (must call ≥1 tool), "tool" (must call named tool).
+type ToolChoice struct {
+	Type string `json:"type"`
+	Name string `json:"name,omitempty"`
+}
+
 type messagePayload struct {
 	Model       string        `json:"model"`
 	Messages    []ChatMessage `json:"messages"`
@@ -42,6 +49,7 @@ type messagePayload struct {
 	Stream      bool          `json:"stream,omitempty"`
 	Temperature float64       `json:"temperature"`
 	Tools       []Tool        `json:"tools,omitempty"`
+	ToolChoice  *ToolChoice   `json:"tool_choice,omitempty"`
 	TopP        float64       `json:"top_p,omitempty"`
 
 	// Extended thinking parameters (Claude 3.7+)

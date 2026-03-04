@@ -142,6 +142,7 @@ func generateMessagesContent(ctx context.Context, o *LLM, messages []llms.Messag
 	}
 
 	tools := toolsToTools(opts.Tools)
+	toolChoice := convertToolChoice(opts.ToolChoice)
 
 	betaHeaders, thinking := extractThinkingOptions(o, opts)
 
@@ -154,6 +155,7 @@ func generateMessagesContent(ctx context.Context, o *LLM, messages []llms.Messag
 		Temperature:            opts.Temperature,
 		TopP:                   opts.TopP,
 		Tools:                  tools,
+		ToolChoice:             toolChoice,
 		Thinking:               thinking,
 		BetaHeaders:            betaHeaders,
 		StreamingFunc:          opts.StreamingFunc,
@@ -262,6 +264,41 @@ func toolsToTools(tools []llms.Tool) []anthropicclient.Tool {
 		}
 	}
 	return toolReq
+}
+
+// convertToolChoice converts the generic CallOptions.ToolChoice into the
+// Anthropic-specific ToolChoice struct. Accepted input shapes:
+//   - string "any", "auto", "none" → {type: <value>}
+//   - llms.ToolChoice{Type: "tool", Function: &{Name: "x"}} → {type: "tool", name: "x"}
+//   - *anthropicclient.ToolChoice → pass-through
+//   - nil → nil (omitted from request, API defaults to "auto")
+func convertToolChoice(tc any) *anthropicclient.ToolChoice {
+	if tc == nil {
+		return nil
+	}
+	switch v := tc.(type) {
+	case string:
+		if v == "" {
+			return nil
+		}
+		return &anthropicclient.ToolChoice{Type: v}
+	case llms.ToolChoice:
+		ac := &anthropicclient.ToolChoice{Type: v.Type}
+		if v.Function != nil {
+			ac.Name = v.Function.Name
+		}
+		return ac
+	case *llms.ToolChoice:
+		ac := &anthropicclient.ToolChoice{Type: v.Type}
+		if v.Function != nil {
+			ac.Name = v.Function.Name
+		}
+		return ac
+	case *anthropicclient.ToolChoice:
+		return v
+	default:
+		return nil
+	}
 }
 
 func processMessages(messages []llms.MessageContent) ([]anthropicclient.ChatMessage, string, error) {
