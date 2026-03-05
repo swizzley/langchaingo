@@ -253,4 +253,4 @@
 // and includes comprehensive testing, linting, and documentation standards.
 //
 // See CONTRIBUTING.md for detailed guidelines.
-package ai_lib
+package langchaingo
