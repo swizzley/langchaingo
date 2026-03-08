@@ -185,6 +185,11 @@ func DefaultIsReasoningModel(model string) bool {
 		return true
 	}
 
+	// Qwen3 (thinking mode by default)
+	if strings.Contains(modelLower, "qwen3") {
+		return true
+	}
+
 	// Grok reasoning models
 	if strings.Contains(modelLower, "grok") && strings.Contains(modelLower, "reasoning") {
 		return true
