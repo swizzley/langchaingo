@@ -272,7 +272,7 @@ func WithPredictPenalizeNewline(val bool) Option {
 // When enabled, the model will show its internal reasoning process.
 func WithThink(val bool) Option {
 	return func(opts *options) {
-		opts.ollamaOptions.Think = val
+		opts.ollamaOptions.Think = &val
 	}
 }
 

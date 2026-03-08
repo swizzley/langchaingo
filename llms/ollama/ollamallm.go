@@ -149,9 +149,16 @@ func (o *LLM) GenerateContent(ctx context.Context, messages []llms.MessageConten
 	// Handle thinking mode if specified via metadata
 	if opts.Metadata != nil {
 		if config, ok := opts.Metadata["thinking_config"].(*llms.ThinkingConfig); ok {
-			if config.Mode != llms.ThinkingModeNone && o.SupportsReasoning() {
-				// Enable thinking for models that support it
-				ollamaOptions.Think = true
+			if o.SupportsReasoning() {
+				if config.Mode == llms.ThinkingModeNone {
+					// Explicitly disable thinking (needed for models like qwen3 that think by default)
+					f := false
+					ollamaOptions.Think = &f
+				} else {
+					// Enable thinking
+					t := true
+					ollamaOptions.Think = &t
+				}
 			}
 		}
 	}
@@ -231,7 +238,7 @@ func (o *LLM) GenerateContent(ctx context.Context, messages []llms.MessageConten
 
 	// Note: Ollama may include thinking in the main content when Think mode is enabled
 	// Future versions may provide separate thinking content
-	if ollamaOptions.Think && o.SupportsReasoning() {
+	if ollamaOptions.Think != nil && *ollamaOptions.Think && o.SupportsReasoning() {
 		genInfo["ThinkingEnabled"] = true
 	}
 
@@ -322,9 +329,12 @@ func makeOllamaOptionsFromOptions(ollamaOptions ollamaclient.Options, opts llms.
 	// Extract thinking configuration for models that support it
 	if opts.Metadata != nil {
 		if config, ok := opts.Metadata["thinking_config"].(*llms.ThinkingConfig); ok {
-			// Enable thinking mode if not explicitly disabled
-			if config.Mode != llms.ThinkingModeNone {
-				ollamaOptions.Think = true
+			if config.Mode == llms.ThinkingModeNone {
+				f := false
+				ollamaOptions.Think = &f
+			} else {
+				t := true
+				ollamaOptions.Think = &t
 			}
 		}
 	}

@@ -15,6 +15,8 @@ import (
 	"github.com/swizzley/langchaingo/internal/httprr"
 )
 
+func boolPtr(b bool) *bool { return &b }
+
 // getOllamaTestURL returns the Ollama server URL to use for testing.
 // It uses OLLAMA_HOST if set, otherwise defaults to localhost:11434.
 func getOllamaTestURL(t *testing.T, rr *httprr.RecordReplay) string {
@@ -313,7 +315,7 @@ func TestClient_GenerateChatWithThink(t *testing.T) {
 		Options: Options{
 			Temperature: 0.0,
 			NumPredict:  100,
-			Think:       true, // Enable reasoning mode
+			Think:       boolPtr(true), // Enable reasoning mode
 		},
 	}
 
@@ -336,7 +338,7 @@ func TestOptionsJSONMarshalWithThink(t *testing.T) {
 	// Test that the think parameter is properly marshaled to JSON
 	opts := Options{
 		Temperature: 0.5,
-		Think:       true,
+		Think:       boolPtr(true),
 	}
 
 	data, err := json.Marshal(opts)
