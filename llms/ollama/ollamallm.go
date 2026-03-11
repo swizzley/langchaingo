@@ -2,6 +2,7 @@ package ollama
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"strings"
@@ -105,15 +106,15 @@ func (o *LLM) GenerateContent(ctx context.Context, messages []llms.MessageConten
 
 	// Our input is a sequence of MessageContent, each of which potentially has
 	// a sequence of Part that could be text, images etc.
-	// We have to convert it to a format Ollama undestands: ChatRequest, which
+	// We have to convert it to a format Ollama understands: ChatRequest, which
 	// has a sequence of Message, each of which has a role and content - single
-	// text + potential images.
+	// text + potential images + optional tool calls.
 	chatMsgs := make([]*ollamaclient.Message, 0, len(messages))
 	for _, mc := range messages {
 		msg := &ollamaclient.Message{Role: typeToRole(mc.Role)}
 
 		// Look at all the parts in mc; expect to find a single Text part and
-		// any number of binary parts.
+		// any number of binary parts or tool call/response parts.
 		var text string
 		foundText := false
 		var images []ollamaclient.ImageData
@@ -128,8 +129,23 @@ func (o *LLM) GenerateContent(ctx context.Context, messages []llms.MessageConten
 				text = pt.Text
 			case llms.BinaryContent:
 				images = append(images, ollamaclient.ImageData(pt.Data))
-			default:
-				return nil, errors.New("only support Text and BinaryContent parts right now")
+			case llms.ToolCallResponse:
+				// Tool result message — set content to the tool output
+				text = pt.Content
+			case llms.ToolCall:
+				// AI message with tool call — convert to Ollama format
+				if pt.FunctionCall != nil {
+					var args map[string]any
+					if pt.FunctionCall.Arguments != "" {
+						_ = json.Unmarshal([]byte(pt.FunctionCall.Arguments), &args)
+					}
+					msg.ToolCalls = append(msg.ToolCalls, ollamaclient.ToolCall{
+						Function: ollamaclient.ToolCallFunction{
+							Name:      pt.FunctionCall.Name,
+							Arguments: args,
+						},
+					})
+				}
 			}
 		}
 
@@ -162,10 +178,26 @@ func (o *LLM) GenerateContent(ctx context.Context, messages []llms.MessageConten
 			}
 		}
 	}
+	// Convert llms.Tool to ollamaclient.Tool
+	var ollamaTools []ollamaclient.Tool
+	for _, t := range opts.Tools {
+		if t.Function != nil {
+			ollamaTools = append(ollamaTools, ollamaclient.Tool{
+				Type: "function",
+				Function: ollamaclient.ToolFunction{
+					Name:        t.Function.Name,
+					Description: t.Function.Description,
+					Parameters:  t.Function.Parameters,
+				},
+			})
+		}
+	}
+
 	req := &ollamaclient.ChatRequest{
 		Model:    model,
 		Format:   format,
 		Messages: chatMsgs,
+		Tools:    ollamaTools,
 		Options:  ollamaOptions,
 		Stream:   opts.StreamingFunc != nil,
 	}
@@ -242,10 +274,27 @@ func (o *LLM) GenerateContent(ctx context.Context, messages []llms.MessageConten
 		genInfo["ThinkingEnabled"] = true
 	}
 
+	// Convert tool calls from Ollama response to llms.ToolCall
+	var toolCalls []llms.ToolCall
+	if resp.Message != nil && len(resp.Message.ToolCalls) > 0 {
+		for i, tc := range resp.Message.ToolCalls {
+			argsJSON, _ := json.Marshal(tc.Function.Arguments)
+			toolCalls = append(toolCalls, llms.ToolCall{
+				ID:   fmt.Sprintf("call_%d", i),
+				Type: "function",
+				FunctionCall: &llms.FunctionCall{
+					Name:      tc.Function.Name,
+					Arguments: string(argsJSON),
+				},
+			})
+		}
+	}
+
 	choices := []*llms.ContentChoice{
 		{
 			Content:        content,
 			GenerationInfo: genInfo,
+			ToolCalls:      toolCalls,
 		},
 	}
 
