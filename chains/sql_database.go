@@ -136,11 +136,27 @@ func (s SQLDatabaseChain) Call(ctx context.Context, inputs map[string]any, optio
 		return nil, err
 	}
 
-	// Hack answer string
-	strs := strings.Split(strings.Split(out, "\n\n")[0], "Answer:")
-	out = strs[0]
-	if len(strs) > 1 {
-		out = strings.TrimSpace(strs[1])
+	// Extract the final answer — models may format it as:
+	//   "Answer: <text>"  (standard chain format)
+	//   prose without a prefix (Claude/Anthropic style)
+	// Avoid the old \n\n split which truncates multi-paragraph answers.
+	if idx := strings.Index(out, "Answer:"); idx >= 0 {
+		out = strings.TrimSpace(out[idx+len("Answer:"):])
+	} else {
+		// No Answer: prefix — use the full output, stripping any leading
+		// SQLQuery/SQLResult/Question lines the model may have echoed back.
+		var lines []string
+		for _, line := range strings.Split(out, "\n") {
+			l := strings.TrimSpace(line)
+			if strings.HasPrefix(l, "SQLQuery:") || strings.HasPrefix(l, "SQLResult:") ||
+				strings.HasPrefix(l, "Question:") || l == "" {
+				continue
+			}
+			lines = append(lines, line)
+		}
+		if len(lines) > 0 {
+			out = strings.TrimSpace(strings.Join(lines, "\n"))
+		}
 	}
 
 	return map[string]any{s.OutputKey: out}, nil
@@ -164,6 +180,27 @@ func (s SQLDatabaseChain) GetOutputKeys() []string {
 // this function is used to extract the exact SQLQuery from the result.
 // nolint:cyclop
 func extractSQLQuery(rawOut string) string {
+	// Handle Claude/Anthropic style ```sql ... ``` or ``` ... ``` blocks first.
+	if idx := strings.Index(rawOut, "```sql"); idx >= 0 {
+		start := idx + len("```sql")
+		if end := strings.Index(rawOut[start:], "```"); end >= 0 {
+			return strings.TrimSpace(rawOut[start : start+end])
+		}
+	}
+	if idx := strings.Index(rawOut, "```"); idx >= 0 {
+		start := idx + 3
+		// skip a bare language tag on the first line (e.g. "sql\n")
+		if nl := strings.Index(rawOut[start:], "\n"); nl >= 0 {
+			firstLine := strings.TrimSpace(rawOut[start : start+nl])
+			if !strings.Contains(firstLine, " ") && !strings.ContainsAny(firstLine, "()=,") {
+				start = start + nl + 1
+			}
+		}
+		if end := strings.Index(rawOut[start:], "```"); end >= 0 {
+			return strings.TrimSpace(rawOut[start : start+end])
+		}
+	}
+
 	outStrings := strings.Split(rawOut, "\n")
 
 	var sqlQuery string
