@@ -57,9 +57,11 @@ func (l *LLM) Call(ctx context.Context, prompt string, options ...llms.CallOptio
 type cliResponse struct {
 	Result           string          `json:"result"`
 	StructuredOutput json.RawMessage `json:"structured_output,omitempty"`
-	Usage            struct {
-		InputTokens  int `json:"input_tokens"`
-		OutputTokens int `json:"output_tokens"`
+	Usage struct {
+		InputTokens              int `json:"input_tokens"`
+		CacheCreationInputTokens int `json:"cache_creation_input_tokens"`
+		CacheReadInputTokens     int `json:"cache_read_input_tokens"`
+		OutputTokens             int `json:"output_tokens"`
 	} `json:"usage"`
 	Model      string `json:"model"`
 	StopReason string `json:"stop_reason"`
@@ -156,8 +158,11 @@ func (l *LLM) GenerateContent(ctx context.Context, messages []llms.MessageConten
 	choice := &llms.ContentChoice{
 		StopReason: resp.StopReason,
 		GenerationInfo: map[string]any{
-			"InputTokens":  resp.Usage.InputTokens,
-			"OutputTokens": resp.Usage.OutputTokens,
+			"InputTokens":              resp.Usage.InputTokens + resp.Usage.CacheCreationInputTokens + resp.Usage.CacheReadInputTokens,
+			"InputTokensUncached":      resp.Usage.InputTokens,
+			"CacheCreationInputTokens": resp.Usage.CacheCreationInputTokens,
+			"CacheReadInputTokens":     resp.Usage.CacheReadInputTokens,
+			"OutputTokens":             resp.Usage.OutputTokens,
 		},
 	}
 
