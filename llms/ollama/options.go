@@ -14,6 +14,7 @@ type options struct {
 	httpClient          *http.Client
 	model               string
 	ollamaOptions       ollamaclient.Options
+	think               *bool // top-level think toggle (separate from options)
 	customModelTemplate string
 	system              string
 	format              string
@@ -272,7 +273,7 @@ func WithPredictPenalizeNewline(val bool) Option {
 // When enabled, the model will show its internal reasoning process.
 func WithThink(val bool) Option {
 	return func(opts *options) {
-		opts.ollamaOptions.Think = &val
+		opts.think = &val
 	}
 }
 

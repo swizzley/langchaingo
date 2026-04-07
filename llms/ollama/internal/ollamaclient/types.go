@@ -34,6 +34,7 @@ type GenerateRequest struct {
 	Context   []int  `json:"context,omitempty"`
 	Stream    *bool  `json:"stream"`
 	KeepAlive string `json:"keep_alive,omitempty"`
+	Think     *bool  `json:"think,omitempty"` // top-level Ollama 0.9.0+ reasoning toggle
 
 	Options Options `json:"options"`
 }
@@ -78,6 +79,7 @@ type ChatRequest struct {
 	Stream    bool       `json:"stream,omitempty"`
 	Format    string     `json:"format"`
 	KeepAlive string     `json:"keep_alive,omitempty"`
+	Think     *bool      `json:"think,omitempty"` // top-level Ollama 0.9.0+ reasoning toggle
 
 	Options Options `json:"options"`
 }
@@ -193,7 +195,6 @@ type Options struct {
 	MirostatEta      float32 `json:"mirostat_eta,omitempty"`
 	TopP             float32 `json:"top_p,omitempty"`
 	PenalizeNewline  bool    `json:"penalize_newline,omitempty"`
-	Think            *bool   `json:"think,omitempty"` // Ollama 0.9.0+ reasoning mode (pointer to send false explicitly)
 }
 
 type PullRequest struct {

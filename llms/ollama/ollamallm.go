@@ -162,18 +162,17 @@ func (o *LLM) GenerateContent(ctx context.Context, messages []llms.MessageConten
 	// Get our ollamaOptions from llms.CallOptions
 	ollamaOptions := makeOllamaOptionsFromOptions(o.options.ollamaOptions, opts)
 
-	// Handle thinking mode if specified via metadata
+	// Handle thinking mode: per-call metadata overrides constructor-level WithThink
+	var thinkMode *bool = o.options.think
 	if opts.Metadata != nil {
 		if config, ok := opts.Metadata["thinking_config"].(*llms.ThinkingConfig); ok {
 			if o.SupportsReasoning() {
 				if config.Mode == llms.ThinkingModeNone {
-					// Explicitly disable thinking (needed for models like qwen3 that think by default)
 					f := false
-					ollamaOptions.Think = &f
+					thinkMode = &f
 				} else {
-					// Enable thinking
 					t := true
-					ollamaOptions.Think = &t
+					thinkMode = &t
 				}
 			}
 		}
@@ -198,6 +197,7 @@ func (o *LLM) GenerateContent(ctx context.Context, messages []llms.MessageConten
 		Format:   format,
 		Messages: chatMsgs,
 		Tools:    ollamaTools,
+		Think:    thinkMode,
 		Options:  ollamaOptions,
 		Stream:   opts.StreamingFunc != nil,
 	}
@@ -270,7 +270,7 @@ func (o *LLM) GenerateContent(ctx context.Context, messages []llms.MessageConten
 
 	// Note: Ollama may include thinking in the main content when Think mode is enabled
 	// Future versions may provide separate thinking content
-	if ollamaOptions.Think != nil && *ollamaOptions.Think && o.SupportsReasoning() {
+	if thinkMode != nil && *thinkMode && o.SupportsReasoning() {
 		genInfo["ThinkingEnabled"] = true
 	}
 
@@ -374,19 +374,6 @@ func makeOllamaOptionsFromOptions(ollamaOptions ollamaclient.Options, opts llms.
 	ollamaOptions.RepeatPenalty = float32(opts.RepetitionPenalty)
 	ollamaOptions.FrequencyPenalty = float32(opts.FrequencyPenalty)
 	ollamaOptions.PresencePenalty = float32(opts.PresencePenalty)
-
-	// Extract thinking configuration for models that support it
-	if opts.Metadata != nil {
-		if config, ok := opts.Metadata["thinking_config"].(*llms.ThinkingConfig); ok {
-			if config.Mode == llms.ThinkingModeNone {
-				f := false
-				ollamaOptions.Think = &f
-			} else {
-				t := true
-				ollamaOptions.Think = &t
-			}
-		}
-	}
 
 	return ollamaOptions
 }
