@@ -222,9 +222,15 @@ func (o *LLM) GenerateContent(ctx context.Context, messages []llms.MessageConten
 		}
 		if !req.Stream || response.Done {
 			resp = response
+			// Preserve tool calls from the accumulated response while setting final content
+			var toolCalls []ollamaclient.ToolCall
+			if response.Message != nil {
+				toolCalls = response.Message.ToolCalls
+			}
 			resp.Message = &ollamaclient.Message{
-				Role:    "assistant",
-				Content: streamedResponse,
+				Role:      "assistant",
+				Content:   streamedResponse,
+				ToolCalls: toolCalls,
 			}
 		}
 		return nil

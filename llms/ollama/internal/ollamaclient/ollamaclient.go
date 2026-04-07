@@ -124,6 +124,26 @@ func (c *Client) stream(ctx context.Context, method, path string, data any, fn f
 			return err
 		}
 
+		// Debug: log request for /api/chat with tools
+		if path == "/api/chat" {
+			var peek struct {
+				Tools []any `json:"tools"`
+				Think *bool `json:"think"`
+			}
+			json.Unmarshal(bts, &peek)
+			if len(peek.Tools) > 0 {
+				think := "nil"
+				if peek.Think != nil {
+					if *peek.Think {
+						think = "true"
+					} else {
+						think = "false"
+					}
+				}
+				fmt.Printf("[ollama-debug] /api/chat: %d tools, think=%s, request=%d bytes\n", len(peek.Tools), think, len(bts))
+			}
+		}
+
 		buf = bytes.NewBuffer(bts)
 	}
 
@@ -231,6 +251,15 @@ func (c *Client) GenerateChat(ctx context.Context, req *ChatRequest, fn ChatResp
 		var accumulatedContent string
 		var accumulatedToolCalls []ToolCall
 		return c.stream(ctx, http.MethodPost, "/api/chat", req, func(bts []byte) error {
+			// Debug: log raw response chunks when tools are present
+			if len(req.Tools) > 0 {
+				preview := string(bts)
+				if len(preview) > 300 {
+					preview = preview[:300] + "..."
+				}
+				fmt.Printf("[ollama-debug] response chunk: %s\n", preview)
+			}
+
 			var resp ChatResponse
 			if err := json.Unmarshal(bts, &resp); err != nil {
 				return err
