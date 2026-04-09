@@ -16,6 +16,8 @@ import (
 	"github.com/swizzley/langchaingo/httputil"
 )
 
+var ollamaDebug = os.Getenv("OLLAMA_DEBUG") != ""
+
 type Client struct {
 	base       *url.URL
 	httpClient *http.Client
@@ -140,7 +142,9 @@ func (c *Client) stream(ctx context.Context, method, path string, data any, fn f
 						think = "false"
 					}
 				}
-				fmt.Printf("[ollama-debug] /api/chat: %d tools, think=%s, request=%d bytes\n", len(peek.Tools), think, len(bts))
+				if ollamaDebug {
+					fmt.Printf("[ollama-debug] /api/chat: %d tools, think=%s, request=%d bytes\n", len(peek.Tools), think, len(bts))
+				}
 			}
 		}
 
@@ -257,7 +261,9 @@ func (c *Client) GenerateChat(ctx context.Context, req *ChatRequest, fn ChatResp
 				if len(preview) > 300 {
 					preview = preview[:300] + "..."
 				}
-				fmt.Printf("[ollama-debug] response chunk: %s\n", preview)
+				if ollamaDebug {
+					fmt.Printf("[ollama-debug] response chunk: %s\n", preview)
+				}
 			}
 
 			var resp ChatResponse
