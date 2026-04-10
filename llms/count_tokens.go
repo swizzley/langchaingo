@@ -24,7 +24,7 @@ const (
 	_textCurie1ContextSize    = 2048
 	_codeDavinci2ContextSize  = 8000
 	_codeCushman1ContextSize  = 2048
-	_defaultContextSize       = 2048
+	_defaultContextSize       = 4096
 )
 
 // nolint:gochecknoglobals
@@ -51,6 +51,11 @@ var modelToContextSize = map[string]int{
 	"gpt-4o-2024-08-06":      _gpt4oContextSize,
 	"gpt-4o-mini":            _gpt4oMiniContextSize,
 	"gpt-4o-mini-2024-07-18": _gpt4oMiniContextSize,
+	// Ollama / local models
+	"qwen3-coder:30b":  32768,
+	"qwen3:14b":        32768,
+	"qwen3.5:latest":   32768,
+	"qwen3.5:7b":       32768,
 	// Legacy models
 	"text-davinci-003": _textDavinci3ContextSize,
 	"text-curie-001":   _textCurie1ContextSize,
@@ -86,4 +91,10 @@ func CountTokens(model, text string) int {
 // CalculateMaxTokens calculates the max number of tokens that could be added to a text.
 func CalculateMaxTokens(model, text string) int {
 	return GetModelContextSize(model) - CountTokens(model, text)
+}
+
+// EstimateTokens provides a fast char-based token estimate without tiktoken overhead.
+// Approximation: ~4 chars per token for English text. Good enough for budget tracking.
+func EstimateTokens(text string) int {
+	return len([]rune(text)) / _tokenApproximation
 }
