@@ -222,14 +222,16 @@ func (o *LLM) GenerateContent(ctx context.Context, messages []llms.MessageConten
 		}
 		if !req.Stream || response.Done {
 			resp = response
-			// Preserve tool calls from the accumulated response while setting final content
 			var toolCalls []ollamaclient.ToolCall
+			var thinking string
 			if response.Message != nil {
 				toolCalls = response.Message.ToolCalls
+				thinking = response.Message.Thinking
 			}
 			resp.Message = &ollamaclient.Message{
 				Role:      "assistant",
 				Content:   streamedResponse,
+				Thinking:  thinking,
 				ToolCalls: toolCalls,
 			}
 		}
@@ -246,8 +248,10 @@ func (o *LLM) GenerateContent(ctx context.Context, messages []llms.MessageConten
 
 	// Handle case where Message might be nil (e.g., context cancelled during streaming)
 	content := ""
+	thinkingContent := ""
 	if resp.Message != nil {
 		content = resp.Message.Content
+		thinkingContent = resp.Message.Thinking
 	}
 
 	// Build generation info with standardized fields
@@ -255,29 +259,24 @@ func (o *LLM) GenerateContent(ctx context.Context, messages []llms.MessageConten
 		"CompletionTokens": resp.EvalCount,
 		"PromptTokens":     resp.PromptEvalCount,
 		"TotalTokens":      resp.EvalCount + resp.PromptEvalCount,
-		// Add empty thinking fields for cross-provider compatibility
-		"ThinkingContent": "", // Ollama doesn't separate thinking content
-		"ThinkingTokens":  0,  // Ollama doesn't track thinking tokens separately
+		"ThinkingContent":  thinkingContent,
+		"ThinkingTokens":   0,
+	}
+
+	if thinkingContent != "" {
+		genInfo["ThinkingEnabled"] = true
 	}
 
 	// If context caching is enabled, track cache usage
 	if contextCache != nil {
 		if cacheEntry, hit := contextCache.Get(messages); hit {
-			// Cache hit - we reused cached context
 			genInfo["CachedTokens"] = cacheEntry.ContextTokens
 			genInfo["CacheHit"] = true
 		} else {
-			// Cache miss - store for future use
 			contextCache.Put(messages, resp.PromptEvalCount)
 			genInfo["CachedTokens"] = 0
 			genInfo["CacheHit"] = false
 		}
-	}
-
-	// Note: Ollama may include thinking in the main content when Think mode is enabled
-	// Future versions may provide separate thinking content
-	if thinkMode != nil && *thinkMode && o.SupportsReasoning() {
-		genInfo["ThinkingEnabled"] = true
 	}
 
 	// Convert tool calls from Ollama response to llms.ToolCall

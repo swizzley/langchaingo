@@ -44,6 +44,7 @@ type ImageData []byte
 type Message struct {
 	Role      string      `json:"role"` // one of ["system", "user", "assistant", "tool"]
 	Content   string      `json:"content"`
+	Thinking  string      `json:"thinking,omitempty"` // reasoning chain (ai serve think=captured)
 	Images    []ImageData `json:"images,omitempty"`
 	ToolCalls []ToolCall  `json:"tool_calls,omitempty"`
 }
