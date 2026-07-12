@@ -6,9 +6,11 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log"
 	"os"
 	"os/exec"
 	"strings"
+	"syscall"
 
 	"github.com/swizzley/langchaingo/llms"
 )
@@ -57,7 +59,7 @@ func (l *LLM) Call(ctx context.Context, prompt string, options ...llms.CallOptio
 type cliResponse struct {
 	Result           string          `json:"result"`
 	StructuredOutput json.RawMessage `json:"structured_output,omitempty"`
-	Usage struct {
+	Usage            struct {
 		InputTokens              int `json:"input_tokens"`
 		CacheCreationInputTokens int `json:"cache_creation_input_tokens"`
 		CacheReadInputTokens     int `json:"cache_read_input_tokens"`
@@ -74,22 +76,44 @@ func (l *LLM) GenerateContent(ctx context.Context, messages []llms.MessageConten
 		opt(opts)
 	}
 
-	// Extract system and user prompts from messages
+	// Extract system and user prompts from messages.
+	// B107: also serialize assistant (AI) turns and tool results into the
+	// stdin prompt so multi-turn history is preserved, not just user text.
 	var systemPrompt, userPrompt string
+	appendUser := func(s string) {
+		if s == "" {
+			return
+		}
+		if userPrompt != "" {
+			userPrompt += "\n"
+		}
+		userPrompt += s
+	}
 	for _, msg := range messages {
 		for _, part := range msg.Parts {
-			if tc, ok := part.(llms.TextContent); ok {
+			switch pt := part.(type) {
+			case llms.TextContent:
 				switch msg.Role {
 				case llms.ChatMessageTypeSystem:
 					if systemPrompt != "" {
 						systemPrompt += "\n"
 					}
-					systemPrompt += tc.Text
-				case llms.ChatMessageTypeHuman:
-					if userPrompt != "" {
-						userPrompt += "\n"
-					}
-					userPrompt += tc.Text
+					systemPrompt += pt.Text
+				case llms.ChatMessageTypeAI:
+					appendUser("Assistant: " + pt.Text)
+				default:
+					// Human / Generic / everything else → plain user text
+					appendUser(pt.Text)
+				}
+			case llms.ToolCallResponse:
+				name := pt.Name
+				if name == "" {
+					name = pt.ToolCallID
+				}
+				if name != "" {
+					appendUser(fmt.Sprintf("Tool result (%s): %s", name, pt.Content))
+				} else {
+					appendUser("Tool result: " + pt.Content)
 				}
 			}
 		}
@@ -111,14 +135,32 @@ func (l *LLM) GenerateContent(ctx context.Context, messages []llms.MessageConten
 	// If tools are provided, use --json-schema with the first tool's parameters
 	var toolName string
 	if len(opts.Tools) > 0 && opts.Tools[0].Function != nil {
+		// B108: only Tools[0] is honored; warn if the caller passed more.
+		if len(opts.Tools) > 1 {
+			log.Printf("WARN claudecode => GenerateContent: %d tools provided, only the first (%s) is used", len(opts.Tools), opts.Tools[0].Function.Name)
+		}
 		toolName = opts.Tools[0].Function.Name
 		schemaBytes, err := json.Marshal(opts.Tools[0].Function.Parameters)
-		if err == nil {
-			args = append(args, "--json-schema", string(schemaBytes))
+		if err != nil {
+			// B108: surface the marshal error instead of silently invoking the
+			// CLI without --json-schema while toolName is still set.
+			return nil, fmt.Errorf("claude CLI: marshal tool schema for %q: %w", toolName, err)
 		}
+		args = append(args, "--json-schema", string(schemaBytes))
 	}
 
 	cmd := exec.CommandContext(ctx, l.claudePath, args...)
+
+	// B109: run the CLI in its own process group and kill the whole group on
+	// context cancellation, so orphaned children (MCP servers, node helpers)
+	// don't leak. CommandContext alone SIGKILLs only the claude process itself.
+	cmd.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
+	cmd.Cancel = func() error {
+		if cmd.Process != nil {
+			return syscall.Kill(-cmd.Process.Pid, syscall.SIGKILL)
+		}
+		return nil
+	}
 
 	// Pipe user prompt via stdin to avoid ARG_MAX limits
 	cmd.Stdin = strings.NewReader(userPrompt)
