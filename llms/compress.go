@@ -2,8 +2,13 @@ package llms
 
 import (
 	"fmt"
+	"regexp"
 	"strings"
 )
+
+// goFileLineRe matches a Go log file:line token, e.g. "compress.go:58".
+// B110: only such a token preceding ": " is a real log-location prefix to strip.
+var goFileLineRe = regexp.MustCompile(`^\S+\.go:\d+$`)
 
 // CompressToolOutput reduces tool output to fit within a character budget.
 // Applies format-aware compression strategies: dedup, timestamp stripping,
@@ -54,26 +59,52 @@ func stripTimestamps(s string) string {
 				}
 			}
 		}
-		// Go log: "2026/04/10 14:32:35 file.go:123: "
+		// Go log: "2026/04/10 14:32:35 file.go:123: " or "2026/04/10 14:32:35 msg"
 		if len(line) > 20 && line[4] == '/' && line[7] == '/' && line[10] == ' ' {
-			if idx := strings.Index(line[19:], ": "); idx >= 0 {
-				lines[i] = line[19+idx+2:]
+			rest := strings.TrimLeft(line[19:], " ")
+			// B110: only strip through ": " when the token before it is a real
+			// file:line location prefix; otherwise the message itself contains
+			// ": " and we'd delete its severity/component/function prefix.
+			if idx := strings.Index(rest, ": "); idx >= 0 {
+				fields := strings.Fields(rest[:idx])
+				if len(fields) > 0 && goFileLineRe.MatchString(fields[len(fields)-1]) {
+					lines[i] = rest[idx+2:]
+					continue
+				}
 			}
+			lines[i] = rest
 		}
 	}
 	return strings.Join(lines, "\n")
 }
 
 // deduplicateLines collapses consecutive identical or near-identical lines.
+// B111: only collapse a run of >= minRun lines whose shared non-digit skeleton
+// is long enough to be structural; shorter/number-heavy runs (distinct data
+// rows) are emitted verbatim so we don't fold distinct numeric rows into one.
 func deduplicateLines(s string) string {
 	lines := strings.Split(s, "\n")
 	if len(lines) <= 3 {
 		return s
 	}
 
+	const minSkeletonLen = 8 // require enough non-digit structure to treat as a repeat
+	const minRun = 3         // only collapse runs of at least this many similar lines
+
 	var result []string
-	var prevLine string
-	repeatCount := 0
+	var run []string // buffered consecutive similar (after digit-strip) lines
+
+	flush := func() {
+		if len(run) == 0 {
+			return
+		}
+		if len(run) >= minRun && len(stripDigits(run[0])) >= minSkeletonLen {
+			result = append(result, fmt.Sprintf("[x%d] %s", len(run), run[0]))
+		} else {
+			result = append(result, run...)
+		}
+		run = run[:0]
+	}
 
 	for _, line := range lines {
 		trimmed := strings.TrimSpace(line)
@@ -81,27 +112,15 @@ func deduplicateLines(s string) string {
 			continue
 		}
 
-		if similarLines(trimmed, prevLine) {
-			repeatCount++
+		if len(run) == 0 || similarLines(trimmed, run[len(run)-1]) {
+			run = append(run, trimmed)
 			continue
 		}
 
-		if repeatCount > 0 {
-			result = append(result, fmt.Sprintf("[x%d] %s", repeatCount+1, prevLine))
-		} else if prevLine != "" {
-			result = append(result, prevLine)
-		}
-
-		prevLine = trimmed
-		repeatCount = 0
+		flush()
+		run = append(run, trimmed)
 	}
-
-	// Flush last
-	if repeatCount > 0 {
-		result = append(result, fmt.Sprintf("[x%d] %s", repeatCount+1, prevLine))
-	} else if prevLine != "" {
-		result = append(result, prevLine)
-	}
+	flush()
 
 	return strings.Join(result, "\n")
 }

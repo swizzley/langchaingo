@@ -1,7 +1,17 @@
 package llms
 
 import (
+	"crypto/sha1"
+	"encoding/base64"
+	"fmt"
+	"io"
 	"log"
+	"net/http"
+	"os"
+	"path/filepath"
+	"strconv"
+	"strings"
+	"time"
 
 	"github.com/pkoukk/tiktoken-go"
 )
@@ -9,6 +19,94 @@ import (
 const (
 	_tokenApproximation = 4
 )
+
+// B112: tiktoken-go's default BPE loader downloads encoding files with a bare
+// http.Get (no timeout), so CountTokens can block forever on first use. Install
+// a loader backed by an http.Client with a bounded timeout, with the same local
+// caching behavior so downloads happen at most once.
+func init() {
+	tiktoken.SetBpeLoader(&timeoutBpeLoader{
+		client: &http.Client{Timeout: 15 * time.Second},
+	})
+}
+
+type timeoutBpeLoader struct {
+	client *http.Client
+}
+
+func (l *timeoutBpeLoader) LoadTiktokenBpe(tiktokenBpeFile string) (map[string]int, error) {
+	contents, err := l.readFileCached(tiktokenBpeFile)
+	if err != nil {
+		return nil, err
+	}
+
+	bpeRanks := make(map[string]int)
+	for _, line := range strings.Split(string(contents), "\n") {
+		if line == "" {
+			continue
+		}
+		parts := strings.Split(line, " ")
+		if len(parts) < 2 {
+			continue
+		}
+		token, err := base64.StdEncoding.DecodeString(parts[0])
+		if err != nil {
+			return nil, err
+		}
+		rank, err := strconv.Atoi(parts[1])
+		if err != nil {
+			return nil, err
+		}
+		bpeRanks[string(token)] = rank
+	}
+	return bpeRanks, nil
+}
+
+func (l *timeoutBpeLoader) readFile(blobpath string) ([]byte, error) {
+	if !strings.HasPrefix(blobpath, "http://") && !strings.HasPrefix(blobpath, "https://") {
+		return os.ReadFile(blobpath)
+	}
+	resp, err := l.client.Get(blobpath)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+	return io.ReadAll(resp.Body)
+}
+
+func (l *timeoutBpeLoader) readFileCached(blobpath string) ([]byte, error) {
+	cacheDir := os.Getenv("TIKTOKEN_CACHE_DIR")
+	if cacheDir == "" {
+		cacheDir = os.Getenv("DATA_GYM_CACHE_DIR")
+	}
+	if cacheDir == "" {
+		cacheDir = filepath.Join(os.TempDir(), "data-gym-cache")
+	}
+
+	cacheKey := fmt.Sprintf("%x", sha1.Sum([]byte(blobpath)))
+	cachePath := filepath.Join(cacheDir, cacheKey)
+	if _, err := os.Stat(cachePath); err == nil {
+		return os.ReadFile(cachePath)
+	}
+
+	contents, err := l.readFile(blobpath)
+	if err != nil {
+		return nil, err
+	}
+
+	if err := os.MkdirAll(cacheDir, 0o755); err == nil {
+		if tmp, err := os.CreateTemp(cacheDir, cacheKey+".*.tmp"); err == nil {
+			if _, werr := tmp.Write(contents); werr == nil {
+				tmp.Close()
+				_ = os.Rename(tmp.Name(), cachePath)
+			} else {
+				tmp.Close()
+				_ = os.Remove(tmp.Name())
+			}
+		}
+	}
+	return contents, nil
+}
 
 const (
 	_gpt35TurboContextSize    = 16385  // gpt-3.5-turbo default context
@@ -52,10 +150,10 @@ var modelToContextSize = map[string]int{
 	"gpt-4o-mini":            _gpt4oMiniContextSize,
 	"gpt-4o-mini-2024-07-18": _gpt4oMiniContextSize,
 	// Ollama / local models
-	"qwen3-coder:30b":  32768,
-	"qwen3:14b":        32768,
-	"qwen3.5:latest":   32768,
-	"qwen3.5:7b":       32768,
+	"qwen3-coder:30b": 32768,
+	"qwen3:14b":       32768,
+	"qwen3.5:latest":  32768,
+	"qwen3.5:7b":      32768,
 	// Legacy models
 	"text-davinci-003": _textDavinci3ContextSize,
 	"text-curie-001":   _textCurie1ContextSize,
