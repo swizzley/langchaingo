@@ -56,8 +56,10 @@ func (c *ContextCache) generateCacheKey(messages []llms.MessageContent) string {
 func (c *ContextCache) Get(messages []llms.MessageContent) (*CacheEntry, bool) {
 	key := c.generateCacheKey(messages)
 
-	c.mu.RLock()
-	defer c.mu.RUnlock()
+	// B113: Get mutates entry.LastAccessed/AccessCount, so take a full write
+	// lock — an RLock here is a data race under concurrent Get calls.
+	c.mu.Lock()
+	defer c.mu.Unlock()
 
 	entry, exists := c.entries[key]
 	if !exists {

@@ -197,6 +197,12 @@ func (c *Client) stream(ctx context.Context, method, path string, data any, fn f
 		}
 	}
 
+	// B031: surface mid-stream network errors and oversized lines
+	// (bufio.ErrTooLong) instead of silently treating them as EOF.
+	if err := scanner.Err(); err != nil {
+		return err
+	}
+
 	return nil
 }
 
@@ -253,6 +259,7 @@ func (c *Client) GenerateChat(ctx context.Context, req *ChatRequest, fn ChatResp
 	if !req.Stream {
 		var finalResp ChatResponse
 		var accumulatedContent string
+		var accumulatedThinking string // B032: accumulate streamed thinking deltas
 		var accumulatedToolCalls []ToolCall
 		return c.stream(ctx, http.MethodPost, "/api/chat", req, func(bts []byte) error {
 			// Debug: log raw response chunks when tools are present
@@ -279,6 +286,11 @@ func (c *Client) GenerateChat(ctx context.Context, req *ChatRequest, fn ChatResp
 				accumulatedContent += resp.Message.Content
 			}
 
+			// B032: accumulate thinking deltas across chunks
+			if resp.Message != nil && resp.Message.Thinking != "" {
+				accumulatedThinking += resp.Message.Thinking
+			}
+
 			// Accumulate tool calls
 			if resp.Message != nil && len(resp.Message.ToolCalls) > 0 {
 				accumulatedToolCalls = append(accumulatedToolCalls, resp.Message.ToolCalls...)
@@ -290,6 +302,7 @@ func (c *Client) GenerateChat(ctx context.Context, req *ChatRequest, fn ChatResp
 					finalResp.Message = &Message{}
 				}
 				finalResp.Message.Content = accumulatedContent
+				finalResp.Message.Thinking = accumulatedThinking
 				finalResp.Message.ToolCalls = accumulatedToolCalls
 				return fn(finalResp)
 			}

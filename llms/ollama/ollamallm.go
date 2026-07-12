@@ -56,8 +56,11 @@ func (o *LLM) SupportsReasoning() bool {
 	// - deepseek-r1 models (DeepSeek reasoning models)
 	// - qwq models (Alibaba's QwQ reasoning models)
 	// - Models with "reasoning" or "thinking" in the name
+	// B033: include qwen3/qwen3.x (the fleet's primary models), matching
+	// llms.DefaultIsReasoningModel so per-call ThinkingConfig is honored.
 	if strings.Contains(model, "deepseek-r1") ||
 		strings.Contains(model, "qwq") ||
+		strings.Contains(model, "qwen3") ||
 		strings.Contains(model, "reasoning") ||
 		strings.Contains(model, "thinking") {
 		return true
@@ -209,6 +212,10 @@ func (o *LLM) GenerateContent(ctx context.Context, messages []llms.MessageConten
 
 	var fn ollamaclient.ChatResponseFunc
 	streamedResponse := ""
+	// B034: accumulate thinking deltas and tool calls across ALL chunks, not
+	// just the final Done chunk (streamed reasoning/tool calls arrive earlier).
+	streamedThinking := ""
+	var streamedToolCalls []ollamaclient.ToolCall
 	var resp ollamaclient.ChatResponse
 
 	fn = func(response ollamaclient.ChatResponse) error {
@@ -219,20 +226,18 @@ func (o *LLM) GenerateContent(ctx context.Context, messages []llms.MessageConten
 		}
 		if response.Message != nil {
 			streamedResponse += response.Message.Content
+			streamedThinking += response.Message.Thinking
+			if len(response.Message.ToolCalls) > 0 {
+				streamedToolCalls = append(streamedToolCalls, response.Message.ToolCalls...)
+			}
 		}
 		if !req.Stream || response.Done {
 			resp = response
-			var toolCalls []ollamaclient.ToolCall
-			var thinking string
-			if response.Message != nil {
-				toolCalls = response.Message.ToolCalls
-				thinking = response.Message.Thinking
-			}
 			resp.Message = &ollamaclient.Message{
 				Role:      "assistant",
 				Content:   streamedResponse,
-				Thinking:  thinking,
-				ToolCalls: toolCalls,
+				Thinking:  streamedThinking,
+				ToolCalls: streamedToolCalls,
 			}
 		}
 		return nil
@@ -371,7 +376,11 @@ func typeToRole(typ llms.ChatMessageType) string {
 func makeOllamaOptionsFromOptions(ollamaOptions ollamaclient.Options, opts llms.CallOptions) ollamaclient.Options {
 	// Load back CallOptions as ollamaOptions
 	ollamaOptions.NumPredict = opts.MaxTokens
-	ollamaOptions.Temperature = float32(opts.Temperature)
+	// B115: only override temperature when the caller actually set it; leaving
+	// it at 0 would otherwise force greedy decoding and clobber Modelfile defaults.
+	if opts.Temperature != 0 {
+		ollamaOptions.Temperature = float32(opts.Temperature)
+	}
 	ollamaOptions.Stop = opts.StopWords
 	ollamaOptions.TopK = opts.TopK
 	ollamaOptions.TopP = float32(opts.TopP)

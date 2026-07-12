@@ -77,7 +77,7 @@ type ChatRequest struct {
 	Model     string     `json:"model"`
 	Messages  []*Message `json:"messages"`
 	Tools     []Tool     `json:"tools,omitempty"`
-	Stream    bool       `json:"stream,omitempty"`
+	Stream    bool       `json:"stream"` // B114: no omitempty so stream:false is actually sent
 	Format    string     `json:"format"`
 	KeepAlive string     `json:"keep_alive,omitempty"`
 	Think     *bool      `json:"think,omitempty"` // top-level Ollama 0.9.0+ reasoning toggle
@@ -186,7 +186,7 @@ type Options struct {
 	NumKeep          int     `json:"num_keep,omitempty"`
 	Mirostat         int     `json:"mirostat,omitempty"`
 	NumPredict       int     `json:"num_predict,omitempty"`
-	Temperature      float32 `json:"temperature"`
+	Temperature      float32 `json:"temperature,omitempty"` // B115: omit when unset so Modelfile default wins
 	TypicalP         float32 `json:"typical_p,omitempty"`
 	RepeatPenalty    float32 `json:"repeat_penalty,omitempty"`
 	PresencePenalty  float32 `json:"presence_penalty,omitempty"`
